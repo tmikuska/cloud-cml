@@ -9,7 +9,13 @@ resource "random_id" "id" {
 }
 
 locals {
-  cml       = templatefile("${path.module}/../data/cml.sh", { cfg = var.cfg })
+  cml = templatefile("${path.module}/../data/cml.sh", {
+    cfg = merge(
+      var.cfg,
+      { sas_token = "undefined" }
+    )
+    }
+  )
   del       = templatefile("${path.module}/../data/del.sh", { cfg = var.cfg })
   copyfile  = templatefile("${path.module}/../data/copyfile.sh", { cfg = var.cfg })
   use_patty = length(regexall("patty\\.sh", join(" ", var.cfg.app.customize))) > 0
@@ -125,7 +131,7 @@ resource "aws_instance" "cml" {
   key_name               = var.cfg.common.key_name
   vpc_security_group_ids = [aws_security_group.sg-tf.id]
   root_block_device {
-    volume_size = var.cfg.aws.disk_size
+    volume_size = var.cfg.common.disk_size
   }
   user_data = templatefile("${path.module}/../data/userdata.txt", {
     cfg      = var.cfg
