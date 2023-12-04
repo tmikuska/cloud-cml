@@ -5,8 +5,7 @@
 #
 
 locals {
-  cfg_file = file("config.yml")
-  cfg      = yamldecode(local.cfg_file)
+  cfg      = yamldecode(file(var.cfg_file))
 }
 
 module "deploy" {

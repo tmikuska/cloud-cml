@@ -122,7 +122,7 @@ resource "aws_instance" "cml" {
   instance_type          = var.cfg.aws.flavor
   ami                    = data.aws_ami.ubuntu.id
   iam_instance_profile   = var.cfg.aws.profile
-  key_name               = var.cfg.aws.key_name
+  key_name               = var.cfg.common.key_name
   vpc_security_group_ids = [aws_security_group.sg-tf.id]
   root_block_device {
     volume_size = var.cfg.aws.disk_size

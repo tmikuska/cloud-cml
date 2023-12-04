@@ -53,7 +53,7 @@ function base_setup() {
         elems=$(jq </provision/refplat -rc '.images|join(" ")')
         for item in $elems; do
             mkdir -p $VLLI/$IDEF/$item
-            copyfile refplat/$IDEF/$item/ $VLLI/$IDEF/$item/ --recursive
+            copyfile refplat/$IDEF/$item/ $VLLI/$IDEF/ --recursive
         done
     fi
 
@@ -74,6 +74,7 @@ function base_setup() {
             sleep 5
         done
         (
+			mkdir -p /var/log/provision
             echo "$FILELIST" | sort |
             while read patch; do
 				(

@@ -6,6 +6,12 @@
 
 # AWS related vars
 
+variable "cfg_file" {
+  type        = string
+  description = "name of the YAML config file to use"
+  default     = "config.yml"
+}
+
 variable "aws_access_key" {
   type        = string
   description = "AWS access key / credential for the provisioning user"

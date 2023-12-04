@@ -15,7 +15,7 @@ function copyfile() {
 			aws s3 cp --no-progress $3 "s3://$loc/$1" $2
 			;;
 		azure)
-			loc='${cfg.azure.storage_location}'
+			loc="https://${cfg.azure.storage_account}.blob.core.windows.net/${cfg.azure.container_name}"
 			azcopy copy --output-level=quiet "$loc/$1$SAS_TOKEN" $2 $3
 			;;
 		*)

@@ -10,7 +10,7 @@ output "public_ip" {
 	  module.aws[0].public_ip :
 	(var.cfg.target == "azure" ?
 	  module.azure[0].public_ip :
-	  "no ip"
+	  "127.0.0.1"
 	)
   )
 }

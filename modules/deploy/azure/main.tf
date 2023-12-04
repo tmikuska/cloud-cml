@@ -191,7 +191,7 @@ resource "azurerm_network_interface_security_group_association" "cml" {
 }
 
 resource "azurerm_linux_virtual_machine" "cml" {
-  name                = "cml-machine"
+  name                = var.cfg.common.hostname
   resource_group_name = data.azurerm_resource_group.cml.name
   location            = data.azurerm_resource_group.cml.location
 
@@ -218,7 +218,8 @@ resource "azurerm_linux_virtual_machine" "cml" {
   # Standard_D48d_v4	48	192	1800	32	225000/3000	8	24000
   # Standard_D64d_v4	64	256	2400	32	300000/4000	8	30000
 
-  size = "Standard_D4d_v4"
+  # size = "Standard_D4d_v4"
+  size = var.cfg.azure.size
   # size = "Standard_D4_v5"
 
   admin_username = "adminuser"
@@ -235,6 +236,7 @@ resource "azurerm_linux_virtual_machine" "cml" {
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
+    disk_size_gb         = var.cfg.common.disk_size
   }
 
   source_image_reference {
@@ -255,6 +257,6 @@ resource "azurerm_linux_virtual_machine" "cml" {
 }
 
 data "azurerm_ssh_public_key" "cml" {
-  name                = "rschmied-key"
+  name                = var.cfg.common.key_name
   resource_group_name = data.azurerm_resource_group.cml.name
 }
