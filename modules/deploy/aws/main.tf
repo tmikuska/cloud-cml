@@ -8,15 +8,11 @@ resource "random_id" "id" {
   byte_length = 4
 }
 
-provider "aws" {
-  region = var.region
-}
-
 locals {
-  cfg       = yamldecode(var.cfg)
-  cml       = templatefile("${path.module}/scripts/cml.sh", local.cfg)
-  del       = templatefile("${path.module}/scripts/del.sh", local.cfg)
-  use_patty = length(regexall("patty\\.sh", join(" ", local.cfg.app.customize))) > 0
+  cml       = templatefile("${path.module}/../data/cml.sh", { cfg = var.cfg })
+  del       = templatefile("${path.module}/../data/del.sh", { cfg = var.cfg })
+  copyfile  = templatefile("${path.module}/../data/copyfile.sh", { cfg = var.cfg })
+  use_patty = length(regexall("patty\\.sh", join(" ", var.cfg.app.customize))) > 0
   cml_ingress = [
     {
       "description" : "allow SSH",
@@ -123,19 +119,20 @@ resource "aws_security_group" "sg-tf" {
 }
 
 resource "aws_instance" "cml" {
-  instance_type          = var.instance_type
+  instance_type          = var.cfg.aws.flavor
   ami                    = data.aws_ami.ubuntu.id
-  iam_instance_profile   = var.iam_instance_profile
-  key_name               = var.key_name
+  iam_instance_profile   = var.cfg.aws.profile
+  key_name               = var.cfg.aws.key_name
   vpc_security_group_ids = [aws_security_group.sg-tf.id]
   root_block_device {
-    volume_size = var.disk_size
+    volume_size = var.cfg.aws.disk_size
   }
-  user_data = templatefile("${path.module}/userdata.txt", {
-    cfg  = local.cfg
-    cml  = local.cml
-    del  = local.del
-    path = path.module
+  user_data = templatefile("${path.module}/../data/userdata.txt", {
+    cfg      = var.cfg
+    cml      = local.cml
+    del      = local.del
+    copyfile = local.copyfile
+    path     = path.module
   })
 }
 

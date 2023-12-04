@@ -10,13 +10,8 @@ locals {
 }
 
 module "deploy" {
-  source               = "./module-cml2-deploy-aws"
-  region               = local.cfg.aws.region
-  instance_type        = local.cfg.aws.flavor
-  key_name             = local.cfg.aws.key_name
-  iam_instance_profile = local.cfg.aws.profile
-  disk_size            = local.cfg.aws.disk_size
-  cfg                  = local.cfg_file
+  source = "./modules/deploy"
+  cfg    = local.cfg
 }
 
 provider "cml2" {
@@ -29,7 +24,7 @@ provider "cml2" {
 }
 
 module "ready" {
-  source = "./module-cml2-readyness"
+  source = "./modules/readyness"
   depends_on = [
     module.deploy.public_ip
   ]

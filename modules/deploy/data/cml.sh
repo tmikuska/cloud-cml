@@ -10,21 +10,29 @@
 # by Terraform with actual values before the script is run!
 #
 # If a dollar curly brace is needed in the shell script itself, it needs to be
-# written as $${VARNAME} (two dollar signs)
+# written as $${{{{VARNAME}}}} (two dollar signs)
 
-# set -x
+set -x
 # set -e
 
-function base_setup() {
-    # current location of the bucket w/ software and images
-    AWS_DEFAULT_REGION=${aws.region}
-    APT_OPTS="-o Dpkg::Options::=--force-confmiss -o Dpkg::Options::=--force-confnew"
-    APT_OPTS+=" -o DPkg::Progress-Fancy=0 -o APT::Color=0"
-    DEBIAN_FRONTEND=noninteractive
-    export APT_OPTS DEBIAN_FRONTEND AWS_DEFAULT_REGION
+source /provision/copyfile.sh
 
-    # copy debian package from bucket into our instance
-    aws s3 cp --no-progress s3://${aws.bucket}/${app.deb} /provision/
+function setup_pre_aws() {
+	export AWS_DEFAULT_REGION='${cfg.aws.region}'
+	apt-get install -y awscli
+}
+
+function setup_pre_azure() {
+    export SAS_TOKEN='${cfg.sas_token}'
+    curl -LO https://aka.ms/downloadazcopy-v10-linux
+    tar xvf down* --strip-components=1 -C /usr/local/bin
+    chmod a+x /usr/local/bin/azcopy
+}
+
+
+function base_setup() {
+    # copy Debian package from cloud storage into our instance
+	copyfile '${cfg.app.deb}' /provision/
 
     # copy node definitions and images to the instance
     VLLI=/var/lib/libvirt/images
@@ -36,7 +44,7 @@ function base_setup() {
     if [ $(jq </provision/refplat '.definitions|length') -gt 0 ]; then
         elems=$(jq </provision/refplat -rc '.definitions|join(" ")')
         for item in $elems; do
-            aws s3 cp --no-progress s3://${aws.bucket}/refplat/$NDEF/$item.yaml $VLLI/$NDEF/
+            copyfile refplat/$NDEF/$item.yaml $VLLI/$NDEF/
         done
     fi
 
@@ -45,32 +53,32 @@ function base_setup() {
         elems=$(jq </provision/refplat -rc '.images|join(" ")')
         for item in $elems; do
             mkdir -p $VLLI/$IDEF/$item
-            aws s3 cp --no-progress --recursive s3://${aws.bucket}/refplat/$IDEF/$item/ $VLLI/$IDEF/$item/
+            copyfile refplat/$IDEF/$item/ $VLLI/$IDEF/$item/ --recursive
         done
     fi
 
-    # if there's no images at this point, copy what's available in the bucket
+    # if there's no images at this point, copy what's available in the defined
+	# cloud storage container
     if [ $(find $VLLI -type f | wc -l) -eq 0 ]; then
-        aws s3 cp --no-progress --recursive s3://${aws.bucket}/refplat/ $VLLI/
+        copyfile refplat/ $VLLI/ --recursive
     fi
 
     systemctl stop ssh
-    apt-get install -y /provision/${app.deb}
+    apt-get install -y '/provision/${cfg.app.deb}'
     systemctl start ssh
 
     FILELIST=$(find /provision/ -type f -name '*.sh' | grep -v '99-dummy.sh')
-    # make the bucket available for the scripts
-    BUCKET=${aws.bucket}
-    export BUCKET
     if [ -n "$FILELIST" ]; then
-        systemctl stop virl2.target
+		systemctl stop virl2.target
         while [ $(systemctl is-active virl2-controller.service) = active ]; do
             sleep 5
         done
         (
             echo "$FILELIST" | sort |
             while read patch; do
-                source "$patch"
+				(
+					source "$patch"
+				) 2>&1 | tee "/var/log/"$patch".log"
             done
         )
         sleep 5
@@ -80,24 +88,31 @@ function base_setup() {
     # For troubleshooting. To allow console access on AWS, the root user needs a
     # password. Note: not all instance types / flavors provide a serial console!
     # echo "root:secret-password-here" | /usr/sbin/chpasswd
-
 }
 
 function cml_configure() {
+	target=$1
     API="http://ip6-localhost:8001/api/v0"
 
     # create system user
-    /usr/sbin/useradd --badname -m -s /bin/bash ${sys.user}
-    echo "${sys.user}:${sys.pass}" | /usr/sbin/chpasswd
-    /usr/sbin/usermod -a -G sudo ${sys.user}
+    /usr/sbin/useradd --badname -m -s /bin/bash '${cfg.sys.user}'
+    echo '${cfg.sys.user}:${cfg.sys.pass}' | /usr/sbin/chpasswd
+    /usr/sbin/usermod -a -G sudo '${cfg.sys.user}'
 
-    # move SSH config from default ubuntu user to new user. This also disables
-    # the login for the ubuntu user by removing the SSH key.
-    mv /home/ubuntu/.ssh /home/${sys.user}/
-    chown -R ${sys.user}.${sys.user} /home/${sys.user}/.ssh
+	# move SSH config from default cloud-provisioned user to new user. This
+	# also disables the login for the ubuntu user by removing the SSH key.
+	if [ "$target" = "aws" ]; then
+		clouduser="ubuntu"
+	elif [ "$target" = "azure" ]; then
+		clouduser="adminuser"
+	else
+		echo "unknown target"
+	fi
+    mv /home/$clouduser/.ssh '/home/${cfg.sys.user}/'
+    chown -R '${cfg.sys.user}.${cfg.sys.user}' '/home/${cfg.sys.user}/.ssh'
 
     # change the ownership of the del.sh script to the sysadmin user
-    chown ${sys.user}.${sys.user} /provision/del.sh
+    chown '${cfg.sys.user}.${cfg.sys.user}' /provision/del.sh
 
     until [ "true" = "$(curl -s $API/system_information | jq -r .ready)" ]; do
         echo "Waiting for controller to be ready..."
@@ -116,10 +131,10 @@ function cml_configure() {
         -H "Authorization: Bearer $TOKEN" \
         -H "accept: application/json" \
         -H "Content-Type: application/json" \
-        -d '{"username":"${app.user}","password":{"new_password":"${app.pass}","old_password":"'$PASS'"}}'
+        -d '{"username":"${cfg.app.user}","password":{"new_password":"${cfg.app.pass}","old_password":"'$PASS'"}}'
 
     # re-auth with new password
-    TOKEN=$(echo '{"username":"${app.user}","password":"${app.pass}"}' \ |
+    TOKEN=$(echo '{"username":"${cfg.app.user}","password":"${cfg.app.pass}"}' \ |
         curl -s -d@- $API/authenticate | jq -r)
 
     # this is still local, everything below talks to GCH licensing servers
@@ -128,7 +143,7 @@ function cml_configure() {
         -H "Authorization: Bearer $TOKEN" \
         -H "accept: application/json" \
         -H "Content-Type: application/json" \
-        -d \"${license.flavor}\"
+        -d \"'${cfg.license.flavor}'\"
 
     # we want to see what happens
     set -x
@@ -139,10 +154,10 @@ function cml_configure() {
         -H "Authorization: Bearer $TOKEN" \
         -H "accept: application/json" \
         -H "Content-Type: application/json" \
-        -d '{"token":"${license.token}","reregister":false}'
+        -d '{"token":"${cfg.license.token}","reregister":false}'
 
     # no need to put in node licenses - unavailable
-    if [[ "${license.flavor}" =~ ^CML_Personal || ${license.nodes} == 0 ]]; then
+    if [[ ${cfg.license.flavor} =~ ^CML_Personal || ${cfg.license.nodes} == 0 ]]; then
         return 0
     fi
 
@@ -152,8 +167,17 @@ function cml_configure() {
         -H "Authorization: Bearer $TOKEN" \
         -H "accept: application/json" \
         -H "Content-Type: application/json" \
-        -d "{\"$ID\":${license.nodes}}"
+        -d "{\"$ID\":${cfg.license.nodes}}"
 }
+
+# ensure non-interactive Debian package installation
+APT_OPTS="-o Dpkg::Options::=--force-confmiss -o Dpkg::Options::=--force-confnew"
+APT_OPTS+=" -o DPkg::Progress-Fancy=0 -o APT::Color=0"
+DEBIAN_FRONTEND=noninteractive
+export APT_OPTS DEBIAN_FRONTEND
+
+# run the appropriate pre-setup function
+setup_pre_${cfg.target}
 
 # only run the base setup when there's a provision directory
 # both with Terraform and with Packer but not when deploying an AMI
@@ -163,5 +187,6 @@ fi
 
 # only do a configure when this is not run within Packer / AMI building
 if [ ! -f /tmp/PACKER_BUILD ]; then
-    cml_configure
+    cml_configure ${cfg.target}
 fi
+

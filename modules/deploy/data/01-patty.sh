@@ -14,7 +14,9 @@ APT_OPTS+=" -o DPkg::Progress-Fancy=0 -o APT::Color=0"
 DEBIAN_FRONTEND=noninteractive
 export APT_OPTS DEBIAN_FRONTEND
 
-aws s3 cp --no-progress s3://${BUCKET}/${DEB} /tmp
+source /provision/copyfile.sh
+
+copyfile ${DEB} /tmp
 
 if [ ! -f /tmp/${DEB} ]; then
     echo "package not there. not installing..."

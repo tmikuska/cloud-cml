@@ -4,27 +4,36 @@
 # All rights reserved.
 #
 
+variable "cfg" {
+  type        = any
+  description = "JSON configuration of the CML deployment"
+}
+
 # AWS related vars
 
 variable "aws_access_key" {
   type        = string
   description = "AWS access key / credential for the provisioning user"
+  default     = ""
 }
 
 variable "aws_secret_key" {
   type        = string
   description = "AWS secret key matching the access key"
+  default     = ""
 }
 
 # Azure related vars
 
-variable "subscription_id" {
+variable "azure_subscription_id" {
   type        = string
   description = "Azure subscription ID"
+  default     = ""
 }
 
-variable "tenant_id" {
+variable "azure_tenant_id" {
   type        = string
   description = "Azure tenant ID"
+  default     = ""
 }
 
