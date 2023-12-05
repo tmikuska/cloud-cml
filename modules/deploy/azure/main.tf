@@ -4,57 +4,40 @@
 # All rights reserved.
 #
 
-// https://learn.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-terraform?tabs=azure-cli
-
-// https://learn.microsoft.com/en-us/entra/identity-platform/howto-create-service-principal-portal
-
-// storage account iam
-// https://learn.microsoft.com/en-us/azure/role-based-access-control/role-assignments-portal?tabs=delegate-condition
-
-
 locals {
+  # late binding required as the token is only known within the module
   cml = templatefile("${path.module}/../data/cml.sh", {
     cfg = merge(
-      var.cfg,
+      var.options.cfg,
       { sas_token = data.azurerm_storage_account_sas.cml.sas }
     )
     }
   )
-  del      = templatefile("${path.module}/../data/del.sh", { cfg = var.cfg })
-  copyfile = templatefile("${path.module}/../data/copyfile.sh", { cfg = var.cfg })
-}
 
-# this creates a new resource group
-# resource "azurerm_resource_group" "cml" {
-#   name     = "cml-east-us"
-#   location = "eastus"
-# }
+  user_data = templatefile("${path.module}/../data/userdata.txt", {
+    cml      = local.cml
+    cfg      = var.options.cfg
+    copyfile = var.options.copyfile
+    del      = var.options.del
+    path     = path.module
+  })
+}
 
 # this references an existing resource group
 data "azurerm_resource_group" "cml" {
-  name = var.cfg.azure.resource_group
-  # name = "cml-east-us"
+  name = var.options.cfg.azure.resource_group
 }
 
+# this references an existing storage account within the resource group
 data "azurerm_storage_account" "cml" {
-  # name                = "cmlrefplatsoftware"
-  name                = var.cfg.azure.storage_account
+  name                = var.options.cfg.azure.storage_account
   resource_group_name = data.azurerm_resource_group.cml.name
-  # location                 = data.azurerm_resource_group.cml.location
-  # account_tier             = "Standard"
-  # account_replication_type = "GRS"
-  #
-  # tags = {
-  #   environment = "staging"
-  # }
 }
-
 
 data "azurerm_storage_account_sas" "cml" {
   connection_string = data.azurerm_storage_account.cml.primary_connection_string
   https_only        = true
-  # signed_version    = "2017-07-29"
-  signed_version = "2022-11-02"
+  signed_version    = "2022-11-02"
 
   resource_types {
     service   = true
@@ -90,72 +73,58 @@ resource "azurerm_network_security_group" "cml" {
   name                = "cml-sg-1"
   location            = data.azurerm_resource_group.cml.location
   resource_group_name = data.azurerm_resource_group.cml.name
-
-  security_rule {
-    name                       = "allow22in"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "22"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    name                       = "allow1122in"
-    priority                   = 110
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "1122"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    name                       = "allow443in"
-    priority                   = 120
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "443"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  security_rule {
-    name                       = "test9090in"
-    priority                   = 130
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "9090"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  tags = {
-    environment = "Production"
-  }
 }
 
+resource "azurerm_network_security_rule" "cml-std" {
+  name                        = "cml-std-in"
+  priority                    = 100
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_ranges     = [22, 443, 1122, 9090]
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  resource_group_name         = data.azurerm_resource_group.cml.name
+  network_security_group_name = azurerm_network_security_group.cml.name
+}
+
+resource "azurerm_network_security_rule" "cml-patty-tcp" {
+  count                       = var.options.use_patty ? 1 : 0
+  name                        = "patty-tcp-in"
+  priority                    = 200
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "2000-7999"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  resource_group_name         = data.azurerm_resource_group.cml.name
+  network_security_group_name = azurerm_network_security_group.cml.name
+}
+
+resource "azurerm_network_security_rule" "cml-patty-udp" {
+  count                       = var.options.use_patty ? 1 : 0
+  name                        = "patty-udp-in"
+  priority                    = 300
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Udp"
+  source_port_range           = "*"
+  destination_port_range      = "2000-7999"
+  source_address_prefix       = "*"
+  destination_address_prefix  = "*"
+  resource_group_name         = data.azurerm_resource_group.cml.name
+  network_security_group_name = azurerm_network_security_group.cml.name
+}
 
 resource "azurerm_public_ip" "cml" {
   name                = "cml-pub-ip-1"
   resource_group_name = data.azurerm_resource_group.cml.name
   location            = data.azurerm_resource_group.cml.location
   allocation_method   = "Dynamic"
-
-  tags = {
-    environment = "Production"
-  }
 }
-
 
 resource "azurerm_virtual_network" "cml" {
   name                = "cml-network"
@@ -191,7 +160,7 @@ resource "azurerm_network_interface_security_group_association" "cml" {
 }
 
 resource "azurerm_linux_virtual_machine" "cml" {
-  name                = var.cfg.common.hostname
+  name                = var.options.cfg.common.hostname
   resource_group_name = data.azurerm_resource_group.cml.name
   location            = data.azurerm_resource_group.cml.location
 
@@ -218,9 +187,7 @@ resource "azurerm_linux_virtual_machine" "cml" {
   # Standard_D48d_v4	48	192	1800	32	225000/3000	8	24000
   # Standard_D64d_v4	64	256	2400	32	300000/4000	8	30000
 
-  # size = "Standard_D4d_v4"
-  size = var.cfg.azure.size
-  # size = "Standard_D4_v5"
+  size = var.options.cfg.azure.size
 
   admin_username = "adminuser"
   network_interface_ids = [
@@ -228,17 +195,18 @@ resource "azurerm_linux_virtual_machine" "cml" {
   ]
 
   admin_ssh_key {
-    username = "adminuser"
-    # public_key = file("~/.ssh/id_rsa.pub")
+    username   = "adminuser"
     public_key = data.azurerm_ssh_public_key.cml.public_key
+    # public_key = file("~/.ssh/id_rsa.pub")
   }
 
   os_disk {
     caching              = "ReadWrite"
     storage_account_type = "Standard_LRS"
-    disk_size_gb         = var.cfg.common.disk_size
+    disk_size_gb         = var.options.cfg.common.disk_size
   }
 
+  # https://canonical-azure.readthedocs-hosted.com/en/latest/azure-explanation/daily-vs-release-images/
   source_image_reference {
     publisher = "Canonical"
     offer     = "0001-com-ubuntu-server-focal"
@@ -246,17 +214,10 @@ resource "azurerm_linux_virtual_machine" "cml" {
     version   = "latest"
   }
 
-  custom_data = base64encode(templatefile("${path.module}/../data/userdata.txt", {
-    cfg      = var.cfg
-    cml      = local.cml
-    del      = local.del
-    copyfile = local.copyfile
-    path     = path.module
-  }))
-
+  custom_data = base64encode(local.user_data)
 }
 
 data "azurerm_ssh_public_key" "cml" {
-  name                = var.cfg.common.key_name
+  name                = var.options.cfg.common.key_name
   resource_group_name = data.azurerm_resource_group.cml.name
 }

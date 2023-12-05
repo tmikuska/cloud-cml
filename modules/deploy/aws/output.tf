@@ -7,3 +7,7 @@
 output "public_ip" {
   value = "${aws_instance.cml.public_ip}"
 }
+
+output "sas_token" {
+	value = "undefined"
+}

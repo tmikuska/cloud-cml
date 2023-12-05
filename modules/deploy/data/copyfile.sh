@@ -6,17 +6,22 @@
 # All rights reserved.
 #
 
-target="${cfg.target}"
+TARGET="${cfg.target}"
+
+SRC=$1
+DST=$2
+RECURSIVE=$3
 
 function copyfile() {
-	case $target in
+	case $TARGET in
 		aws)
-			loc='${cfg.aws.bucket}'
-			aws s3 cp --no-progress $3 "s3://$loc/$1" $2
+			LOC='${cfg.aws.bucket}'
+			aws s3 cp --no-progress $RECURSIVE "s3://$LOC/$SRC" $DST
 			;;
 		azure)
-			loc="https://${cfg.azure.storage_account}.blob.core.windows.net/${cfg.azure.container_name}"
-			azcopy copy --output-level=quiet "$loc/$1$SAS_TOKEN" $2 $3
+			# SAS_TOKEN must be exported to permit access
+			LOC="https://${cfg.azure.storage_account}.blob.core.windows.net/${cfg.azure.container_name}"
+			azcopy copy --output-level=quiet "$LOC/$SRC$SAS_TOKEN" $DST $RECURSIVE
 			;;
 		*)
 			;;

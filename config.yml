@@ -31,11 +31,11 @@ app:
   # need to escape special chars:
   # pass: '\"!@$%'
   deb: cml2_2.6.1-11_amd64.deb
-  # list must have at least ONE element, this is what the dummy is for in case
-  # 00- and 01- are commented out!
+  # The list must have at least ONE element, this is what the dummy is for in
+  # case 00- and 01- are commented out!
   customize:
     # - 00-patch_vmx.sh
-    - 01-patty.sh
+    # - 01-patty.sh
     - 99-dummy.sh
 
 sys:
@@ -45,13 +45,14 @@ sys:
 license:
   flavor: CML_Enterprise
   token: your-smart-licensing-token
-  # unless you have additional nodes, leave this at zero
+  # Unless you have additional node licenses available, leave this at zero
   nodes: 0
 
-# select the ones needed by un-/commenting them. The selected
-# reference platforms will be copied from the specified bucket
-# and must be available prior to starting an instance.
-# smaller selection: less copying, faster bring-up time!
+# Select the reference platforms needed by un-/commenting them. The selected
+# reference platforms will be copied from the specified cloud storage and must
+# be available prior to starting an instance. Ensure that each definition has
+# also a corresponding image! A smaller selection: less copying, faster bring-up
+# time!
 refplat:
   definitions:
     - alpine

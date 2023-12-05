@@ -19,15 +19,29 @@ provider "azurerm" {
   # Configuration options
 }
 
+resource "random_id" "id" {
+  byte_length = 4
+}
+
+locals {
+  options = {
+    cfg       = var.cfg
+    del       = templatefile("${path.module}/data/del.sh", { cfg = var.cfg })
+    copyfile  = templatefile("${path.module}/data/copyfile.sh", { cfg = var.cfg })
+    use_patty = length(regexall("patty\\.sh", join(" ", var.cfg.app.customize))) > 0
+    rand_id   = random_id.id.hex
+  }
+}
+
 module "aws" {
-  source = "./aws"
-  count  = var.cfg.target == "aws" ? 1 : 0
-  cfg    = var.cfg
+  source  = "./aws"
+  count   = var.cfg.target == "aws" ? 1 : 0
+  options = local.options
 }
 
 module "azure" {
-  source = "./azure"
-  count  = var.cfg.target == "azure" ? 1 : 0
-  cfg    = var.cfg
+  source  = "./azure"
+  count   = var.cfg.target == "azure" ? 1 : 0
+  options = local.options
 }
 

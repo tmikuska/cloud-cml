@@ -8,3 +8,6 @@ output "public_ip" {
   value = azurerm_linux_virtual_machine.cml.public_ip_address
 }
 
+output "sas_token" {
+	value = data.azurerm_storage_account_sas.cml.sas
+}

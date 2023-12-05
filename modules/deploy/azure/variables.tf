@@ -4,8 +4,8 @@
 # All rights reserved.
 #
 
-variable "cfg" {
+variable "options" {
   type        = any
-  description = "JSON configuration of the CML deployment"
+  description = "module options of the CML deployment as an object"
 }
 

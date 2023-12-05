@@ -4,21 +4,27 @@
 # All rights reserved.
 #
 
-resource "random_id" "id" {
-  byte_length = 4
-}
-
 locals {
+  # Late binding required as the token is only known within the module.
+  # (Azure specific)
   cml = templatefile("${path.module}/../data/cml.sh", {
     cfg = merge(
-      var.cfg,
+      var.options.cfg,
+      # Need to have this as it's referenced in the template.
+      # (Azure specific)
       { sas_token = "undefined" }
     )
     }
   )
-  del       = templatefile("${path.module}/../data/del.sh", { cfg = var.cfg })
-  copyfile  = templatefile("${path.module}/../data/copyfile.sh", { cfg = var.cfg })
-  use_patty = length(regexall("patty\\.sh", join(" ", var.cfg.app.customize))) > 0
+
+  user_data = templatefile("${path.module}/../data/userdata.txt", {
+    cml      = local.cml
+    cfg      = var.options.cfg
+    copyfile = var.options.copyfile
+    del      = var.options.del
+    path     = path.module
+  })
+
   cml_ingress = [
     {
       "description" : "allow SSH",
@@ -104,7 +110,7 @@ locals {
 }
 
 resource "aws_security_group" "sg-tf" {
-  name        = "tf-sg-cml-${random_id.id.hex}"
+  name        = "tf-sg-cml-${var.options.rand_id}"
   description = "CML required ports inbound/outbound"
   egress = [
     {
@@ -121,25 +127,19 @@ resource "aws_security_group" "sg-tf" {
       "self" : false,
     }
   ]
-  ingress = local.use_patty ? concat(local.cml_ingress, local.cml_patty_range) : local.cml_ingress
+  ingress = var.options.use_patty ? concat(local.cml_ingress, local.cml_patty_range) : local.cml_ingress
 }
 
 resource "aws_instance" "cml" {
-  instance_type          = var.cfg.aws.flavor
+  instance_type          = var.options.cfg.aws.flavor
   ami                    = data.aws_ami.ubuntu.id
-  iam_instance_profile   = var.cfg.aws.profile
-  key_name               = var.cfg.common.key_name
+  iam_instance_profile   = var.options.cfg.aws.profile
+  key_name               = var.options.cfg.common.key_name
   vpc_security_group_ids = [aws_security_group.sg-tf.id]
   root_block_device {
-    volume_size = var.cfg.common.disk_size
+    volume_size = var.options.cfg.common.disk_size
   }
-  user_data = templatefile("${path.module}/../data/userdata.txt", {
-    cfg      = var.cfg
-    cml      = local.cml
-    del      = local.del
-    copyfile = local.copyfile
-    path     = path.module
-  })
+  user_data = base64encode(local.user_data)
 }
 
 data "aws_ami" "ubuntu" {
