@@ -189,13 +189,13 @@ resource "azurerm_linux_virtual_machine" "cml" {
 
   size = var.options.cfg.azure.size
 
-  admin_username = "adminuser"
+  admin_username = "ubuntu"
   network_interface_ids = [
     azurerm_network_interface.cml.id,
   ]
 
   admin_ssh_key {
-    username   = "adminuser"
+    username   = "ubuntu"
     public_key = data.azurerm_ssh_public_key.cml.public_key
     # public_key = file("~/.ssh/id_rsa.pub")
   }

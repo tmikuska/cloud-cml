@@ -8,11 +8,10 @@
 
 TARGET="${cfg.target}"
 
-SRC=$1
-DST=$2
-RECURSIVE=$3
-
 function copyfile() {
+	SRC=$1
+	DST=$2
+	RECURSIVE=$3
 	case $TARGET in
 		aws)
 			LOC='${cfg.aws.bucket}'

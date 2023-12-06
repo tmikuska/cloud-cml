@@ -105,13 +105,14 @@ function cml_configure() {
 	# also disables the login for this user by removing the SSH key.
 	# Technically, this could be the same user as Azure allows to set the
 	# user name
-	if [ "$target" = "aws" ]; then
-		clouduser="ubuntu"
-	elif [ "$target" = "azure" ]; then
-		clouduser="adminuser"
-	else
-		echo "unknown target"
-	fi
+	# if [ "$target" = "aws" ]; then
+	# 	clouduser="ubuntu"
+	# elif [ "$target" = "azure" ]; then
+	# 	clouduser="adminuser"
+	# else
+	# 	echo "unknown target"
+	# fi
+	clouduser="ubuntu"
     mv /home/$clouduser/.ssh '/home/${cfg.sys.user}/'
     chown -R '${cfg.sys.user}.${cfg.sys.user}' '/home/${cfg.sys.user}/.ssh'
 
