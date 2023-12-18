@@ -1,8 +1,8 @@
 # AWS
 
-Version 0.2.0, December 5 2023
+Version 0.2.0, December 18 2023
 
-This document explains specific configuration steps to deploy a CML instance in AWS.
+This document contains specific configuration steps to deploy a CML instance in AWS. Some sections from the top level document are repeated here with additional detail regarding AWS.
 
 ## General requirements
 

@@ -7,6 +7,7 @@ Lists the changes for the tool releases.
 - added multi-cloud support
 - big re-factor to accommodate different cloud-targets
 - currently supported: AWS and Azure
+- updated documentation, split into different cloud providers
 
 ## Version 0.1.4
 
