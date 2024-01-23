@@ -2,28 +2,25 @@
 
 #
 # This file is part of Cisco Modeling Labs
-# Copyright (c) 2019-2023, Cisco Systems, Inc.
+# Copyright (c) 2019-2024, Cisco Systems, Inc.
 # All rights reserved.
 #
 
-# NOTE: vars with dollar curly brace are HCL template vars, getting replaced
-# by Terraform with actual values before the script is deployed to the VM!
-#
-# If a dollar curly brace is needed in the shell script itself, it needs to be
-# written with two dollar signs and a pair of double curly braces.
-
-set -x
+# set -x
 # set -e
 
+
+source /provision/vars.sh
 source /provision/copyfile.sh
 
+
 function setup_pre_aws() {
-	export AWS_DEFAULT_REGION='${cfg.aws.region}'
-	apt-get install -y awscli
+    export AWS_DEFAULT_REGION=${CFG_AWS_REGION}
+    apt-get install -y awscli
 }
 
+
 function setup_pre_azure() {
-    export SAS_TOKEN='${cfg.sas_token}'
     curl -LO https://aka.ms/downloadazcopy-v10-linux
     tar xvf down* --strip-components=1 -C /usr/local/bin
     chmod a+x /usr/local/bin/azcopy
@@ -32,7 +29,7 @@ function setup_pre_azure() {
 
 function base_setup() {
     # copy Debian package from cloud storage into our instance
-	copyfile '${cfg.app.deb}' /provision/
+    copyfile ${CFG_APP_DEB} /provision/
 
     # copy node definitions and images to the instance
     VLLI=/var/lib/libvirt/images
@@ -58,66 +55,52 @@ function base_setup() {
     fi
 
     # if there's no images at this point, copy what's available in the defined
-	# cloud storage container
+    # cloud storage container
     if [ $(find $VLLI -type f | wc -l) -eq 0 ]; then
         copyfile refplat/ $VLLI/ --recursive
     fi
 
     systemctl stop ssh
-    apt-get install -y '/provision/${cfg.app.deb}'
+    apt-get install -y /provision/${CFG_APP_DEB}
     systemctl start ssh
 
-    FILELIST=$(find /provision/ -type f -name '*.sh' | grep -v '99-dummy.sh')
-    if [ -n "$FILELIST" ]; then
-		systemctl stop virl2.target
-        while [ $(systemctl is-active virl2-controller.service) = active ]; do
-            sleep 5
-        done
-        (
-			mkdir -p /var/log/provision
-            echo "$FILELIST" | sort |
-            while read patch; do
-				(
-					source "$patch"
-				) 2>&1 | tee "/var/log/"$patch".log"
-            done
-        )
-        sleep 5
-        systemctl restart virl2.target
-    fi
-
-	# AWS specific (?):
+    # AWS specific (?):
     # For troubleshooting. To allow console access on AWS, the root user needs a
     # password. Note: not all instance types / flavors provide a serial console!
     # echo "root:secret-password-here" | /usr/sbin/chpasswd
 }
 
+
 function cml_configure() {
-	target=$1
+    target=$1
     API="http://ip6-localhost:8001/api/v0"
 
     # Create system user
-    /usr/sbin/useradd --badname -m -s /bin/bash '${cfg.sys.user}'
-    echo '${cfg.sys.user}:${cfg.sys.pass}' | /usr/sbin/chpasswd
-    /usr/sbin/usermod -a -G sudo '${cfg.sys.user}'
+    /usr/sbin/useradd --badname -m -s /bin/bash ${CFG_SYS_USER}
+    echo "${CFG_SYS_USER}:${CFG_SYS_PASS}" | /usr/sbin/chpasswd
+    /usr/sbin/usermod -a -G sudo ${CFG_SYS_USER}
 
-	# Move SSH config from default cloud-provisioned user to new user. This
-	# also disables the login for this user by removing the SSH key.
-	# Technically, this could be the same user as Azure allows to set the
-	# user name
-	# if [ "$target" = "aws" ]; then
-	# 	clouduser="ubuntu"
-	# elif [ "$target" = "azure" ]; then
-	# 	clouduser="adminuser"
-	# else
-	# 	echo "unknown target"
-	# fi
-	clouduser="ubuntu"
-    mv /home/$clouduser/.ssh '/home/${cfg.sys.user}/'
-    chown -R '${cfg.sys.user}.${cfg.sys.user}' '/home/${cfg.sys.user}/.ssh'
+    # Move SSH config from default cloud-provisioned user to new user. This
+    # also disables the login for this user by removing the SSH key.
+    # Technically, this could be the same user as Azure allows to set the
+    # user name
+    # if [ "$target" = "aws" ]; then
+    #     clouduser="ubuntu"
+    # elif [ "$target" = "azure" ]; then
+    #     clouduser="adminuser"
+    # else
+    #     echo "unknown target"
+    # fi
+    clouduser="ubuntu"
+    mv /home/$clouduser/.ssh /home/${CFG_SYS_USER}/
+    chown -R ${CFG_SYS_USER}.${CFG_SYS_USER} /home/${CFG_SYS_USER}/.ssh
+
+    # allow this user to read the configuration vars
+    chgrp ${CFG_SYS_USER} /provision/vars.sh
+    chmod g+r /provision/vars.sh
 
     # Change the ownership of the del.sh script to the sysadmin user
-    chown '${cfg.sys.user}.${cfg.sys.user}' /provision/del.sh
+    chown ${CFG_SYS_USER}.${CFG_SYS_USER} /provision/del.sh
 
     until [ "true" = "$(curl -s $API/system_information | jq -r .ready)" ]; do
         echo "Waiting for controller to be ready..."
@@ -136,10 +119,10 @@ function cml_configure() {
         -H "Authorization: Bearer $TOKEN" \
         -H "accept: application/json" \
         -H "Content-Type: application/json" \
-        -d '{"username":"${cfg.app.user}","password":{"new_password":"${cfg.app.pass}","old_password":"'$PASS'"}}'
+        -d '{"username":"'${CFG_APP_USER}'","password":{"new_password":"'${CFG_APP_PASS}'","old_password":"'$PASS'"}}'
 
     # Re-auth with new password
-    TOKEN=$(echo '{"username":"${cfg.app.user}","password":"${cfg.app.pass}"}' \ |
+    TOKEN=$(echo '{"username":"'${CFG_APP_USER}'","password":"'${CFG_APP_PASS}'"}' \ |
         curl -s -d@- $API/authenticate | jq -r)
 
     # This is still local, everything below talks to GCH licensing servers
@@ -148,21 +131,40 @@ function cml_configure() {
         -H "Authorization: Bearer $TOKEN" \
         -H "accept: application/json" \
         -H "Content-Type: application/json" \
-        -d \"'${cfg.license.flavor}'\"
+        -d '"'${CFG_LICENSE_FLAVOR}'"'
 
     # We want to see what happens
-    set -x
+    # set -x
 
-    # Licensing steps
-    curl -vs -X "POST" \
-        "$API/licensing/registration" \
-        -H "Authorization: Bearer $TOKEN" \
-        -H "accept: application/json" \
-        -H "Content-Type: application/json" \
-        -d '{"token":"${cfg.license.token}","reregister":false}'
+    # licensing, register w/ SSM and check result/compliance
+    attempts=5
+    while [ $attempts -gt 0 ]; do
+        curl -vs -X "POST" \
+            "$API/licensing/registration" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "accept: application/json" \
+            -H "Content-Type: application/json" \
+            -d '{"token":"'${CFG_LICENSE_TOKEN}'","reregister":false}'
+        sleep 5
+        result=$(curl -s -X "GET" \
+            "$API/licensing" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "accept: application/json")
+
+        if [ "$(echo $result | jq -r '.registration.status')" = "COMPLETED" ] && [ "$(echo $result | jq -r '.authorization.status')" = "IN_COMPLIANCE" ] ; then
+            break
+        fi
+        echo "no license, trying again ($attempts)"
+        (( attempts-- ))
+    done
+
+    if [ $attempts -eq 0 ]; then
+        echo "licensing failed!"
+        return 1
+    fi
 
     # No need to put in node licenses - unavailable
-    if [[ ${cfg.license.flavor} =~ ^CML_Personal || ${cfg.license.nodes} == 0 ]]; then
+    if [[ ${CFG_LICENSE_FLAVOR} =~ ^CML_Personal || ${CFG_LICENSE_NODES} == 0 ]]; then
         return 0
     fi
 
@@ -172,8 +174,33 @@ function cml_configure() {
         -H "Authorization: Bearer $TOKEN" \
         -H "accept: application/json" \
         -H "Content-Type: application/json" \
-        -d "{\"$ID\":${cfg.license.nodes}}"
+        -d '{"'$ID'":'${CFG_LICENSE_NODES}'}'
 }
+
+
+function postprocess() {
+    FILELIST=$(find /provision/ -type f | egrep '[0-9]{2}-[[:alnum:]]+\.sh' | grep -v '99-dummy' | sort)
+    if [ -n "$FILELIST" ]; then
+        systemctl stop virl2.target
+        while [ $(systemctl is-active virl2-controller.service) = active ]; do
+            sleep 5
+        done
+        (
+            mkdir -p /var/log/provision
+            echo "$FILELIST" | wc -l
+            for patch in $FILELIST; do
+                echo "processing $patch ..."
+                (
+                    source "$patch" || true
+                ) 2>&1 | tee "/var/log/"$patch".log"
+                echo "done with $patch"
+            done
+        )
+        sleep 5
+        systemctl restart virl2.target
+    fi
+}
+
 
 # Ensure non-interactive Debian package installation
 APT_OPTS="-o Dpkg::Options::=--force-confmiss -o Dpkg::Options::=--force-confnew"
@@ -182,7 +209,18 @@ DEBIAN_FRONTEND=noninteractive
 export APT_OPTS DEBIAN_FRONTEND
 
 # Run the appropriate pre-setup function
-setup_pre_${cfg.target}
+case $CFG_TARGET in
+    aws)
+        setup_pre_aws
+        ;;
+    azure)
+        setup_pre_azure
+        ;;
+    *)
+        echo "unknown target!"
+        exit 1
+        ;;
+esac
 
 # Only run the base setup when there's a provision directory both with
 # Terraform and with Packer but not when deploying an AMI
@@ -192,6 +230,7 @@ fi
 
 # Only do a configure when this is not run within Packer / AMI building
 if [ ! -f /tmp/PACKER_BUILD ]; then
-    cml_configure ${cfg.target}
+    cml_configure ${CFG_TARGET}
+    postprocess
 fi
 

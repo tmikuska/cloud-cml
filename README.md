@@ -1,6 +1,6 @@
 # README
 
-Version 0.2.0, December 18 2023
+Version 0.2.0, January 23 2024
 
 This repository includes scripts, tooling and documentation to provision an instance of Cisco Modeling Labs (CML) in various cloud services. Currently supported are Amazon Web Services (AWS) and Microsoft Azure.
 

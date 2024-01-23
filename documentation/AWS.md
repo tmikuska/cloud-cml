@@ -1,6 +1,6 @@
 # AWS
 
-Version 0.2.0, December 18 2023
+Version 0.2.0, December 18 2024
 
 This document contains specific configuration steps to deploy a CML instance in AWS. Some sections from the top level document are repeated here with additional detail regarding AWS.
 
@@ -319,6 +319,8 @@ There's also a dummy entry in that list as the list must have at least one eleme
 
 > **Note:** PATty is currently not available as a standalone .deb file. We will include it with 2.6.1 as part of the controller distribution (in addition to installing it).
 
+> **Note:** AWS userdata is limited to 16KB of data (Base64 encoded).  That limit is easily reached.  If more customization is done with additional scripts (like certificate installation or system customization), then it's likely to run into this limit.  The tooling will eventually need to copy the script bundle to storage (S3) and download it from there during server bring-up (this is not done today!).  See [this SO post](https://stackoverflow.com/questions/72099325/bypassing-16kb-ec2-user-data-limitation).
+
 #### Sys section
 
 In this section, the OS user and password are defined.
@@ -535,7 +537,7 @@ sysadmin@rschmied-aws-2023042001:~$ systemctl status | head
 sysadmin@rschmied-aws-2023042001:~$ systemctl status virl2.target
 ● virl2.target - CML2 Network Simulation System
      Loaded: loaded (/lib/systemd/system/virl2.target; enabled; vendor preset: enabled)
-     Active: active since Fri 2023-04-21 14:47:58 UTC; 2min 13s ago
+     Active: active since Fri 2024-04-21 14:47:58 UTC; 2min 13s ago
 
 Warning: some journal files were not opened due to insufficient permissions.
 sysadmin@rschmied-aws-2023042001:~$ 

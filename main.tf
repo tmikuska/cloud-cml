@@ -1,16 +1,20 @@
 #
 # This file is part of Cisco Modeling Labs
-# Copyright (c) 2019-2023, Cisco Systems, Inc.
+# Copyright (c) 2019-2024, Cisco Systems, Inc.
 # All rights reserved.
 #
 
 locals {
-  cfg      = yamldecode(file(var.cfg_file))
+  cfg    = yamldecode(file(var.cfg_file))
+  extras = var.cfg_extra_vars == null ? "" : (
+    fileexists(var.cfg_extra_vars) ? file(var.cfg_extra_vars) : var.cfg_extra_vars
+  )
 }
 
 module "deploy" {
   source = "./modules/deploy"
   cfg    = local.cfg
+  extras = local.extras
 }
 
 provider "cml2" {

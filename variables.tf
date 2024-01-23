@@ -1,16 +1,24 @@
 #
 # This file is part of Cisco Modeling Labs
-# Copyright (c) 2019-2023, Cisco Systems, Inc.
+# Copyright (c) 2019-2024, Cisco Systems, Inc.
 # All rights reserved.
 #
 
-# AWS related vars
+# Common variables
 
 variable "cfg_file" {
   type        = string
   description = "Name of the YAML config file to use"
   default     = "config.yml"
 }
+
+variable "cfg_extra_vars" {
+  type        = string
+  description = "extra variable definitions, typically empty"
+  default     = null
+}
+
+# AWS related vars
 
 variable "aws_access_key" {
   type        = string

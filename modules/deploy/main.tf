@@ -1,6 +1,6 @@
 #
 # This file is part of Cisco Modeling Labs
-# Copyright (c) 2019-2023, Cisco Systems, Inc.
+# Copyright (c) 2019-2024, Cisco Systems, Inc.
 # All rights reserved.
 #
 
@@ -26,8 +26,10 @@ resource "random_id" "id" {
 locals {
   options = {
     cfg       = var.cfg
-    del       = templatefile("${path.module}/data/del.sh", { cfg = var.cfg })
-    copyfile  = templatefile("${path.module}/data/copyfile.sh", { cfg = var.cfg })
+	cml       = file("${path.module}/data/cml.sh")
+    copyfile  = file("${path.module}/data/copyfile.sh")
+    del       = file("${path.module}/data/del.sh")
+    extras    = var.extras
     use_patty = length(regexall("patty\\.sh", join(" ", var.cfg.app.customize))) > 0
     rand_id   = random_id.id.hex
   }

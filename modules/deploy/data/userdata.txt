@@ -28,6 +28,11 @@ write_files:
     owner: root:root
     permissions: "0700"
     content: ${base64encode(copyfile)}
+  - path: /provision/vars.sh
+    encoding: b64
+    owner: root:root
+    permissions: "0600"
+    content: ${base64encode(format("%s\n%s", vars, extras))}
   - path: /provision/del.sh
     encoding: b64
     owner: root:root

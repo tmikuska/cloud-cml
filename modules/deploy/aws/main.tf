@@ -1,27 +1,29 @@
 #
 # This file is part of Cisco Modeling Labs
-# Copyright (c) 2019-2023, Cisco Systems, Inc.
+# Copyright (c) 2019-2024, Cisco Systems, Inc.
 # All rights reserved.
 #
 
 locals {
   # Late binding required as the token is only known within the module.
   # (Azure specific)
-  cml = templatefile("${path.module}/../data/cml.sh", {
+  vars = templatefile("${path.module}/../data/vars.sh", {
     cfg = merge(
-      var.options.cfg,
-      # Need to have this as it's referenced in the template.
-      # (Azure specific)
-      { sas_token = "undefined" }
-    )
+        var.options.cfg,
+        # Need to have this as it's referenced in the template.
+        # (Azure specific)
+        { sas_token = "undefined" }
+      )
     }
   )
 
   user_data = templatefile("${path.module}/../data/userdata.txt", {
-    cml      = local.cml
+    vars     = local.vars
     cfg      = var.options.cfg
+    cml      = var.options.cml
     copyfile = var.options.copyfile
     del      = var.options.del
+    extras   = var.options.extras
     path     = path.module
   })
 
@@ -56,6 +58,19 @@ locals {
       "description" : "allow Cockpit",
       "from_port" : 9090,
       "to_port" : 9090
+      "protocol" : "tcp",
+      "cidr_blocks" : [
+        "0.0.0.0/0"
+      ],
+      "ipv6_cidr_blocks" : [],
+      "prefix_list_ids" : [],
+      "security_groups" : [],
+      "self" : false,
+    },
+    {
+      "description" : "allow HTTP",
+      "from_port" : 80,
+      "to_port" : 80
       "protocol" : "tcp",
       "cidr_blocks" : [
         "0.0.0.0/0"

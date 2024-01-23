@@ -1,12 +1,17 @@
 #
 # This file is part of Cisco Modeling Labs
-# Copyright (c) 2019-2023, Cisco Systems, Inc.
+# Copyright (c) 2019-2024, Cisco Systems, Inc.
 # All rights reserved.
 #
 
 variable "cfg" {
   type        = any
   description = "JSON configuration of the CML deployment"
+}
+
+variable "extras" {
+  type        = any
+  description = "extra shell variable defininitions"
 }
 
 # AWS related vars

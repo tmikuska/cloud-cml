@@ -1,12 +1,12 @@
 #
 # This file is part of Cisco Modeling Labs
-# Copyright (c) 2019-2023, Cisco Systems, Inc.
+# Copyright (c) 2019-2024, Cisco Systems, Inc.
 # All rights reserved.
 #
 
 locals {
   # late binding required as the token is only known within the module
-  cml = templatefile("${path.module}/../data/cml.sh", {
+  vars = templatefile("${path.module}/../data/vars.sh", {
     cfg = merge(
       var.options.cfg,
       { sas_token = data.azurerm_storage_account_sas.cml.sas }
@@ -15,10 +15,12 @@ locals {
   )
 
   user_data = templatefile("${path.module}/../data/userdata.txt", {
-    cml      = local.cml
+    vars     = local.vars
     cfg      = var.options.cfg
+    cml      = var.options.cml
     copyfile = var.options.copyfile
     del      = var.options.del
+    extras   = var.options.extras
     path     = path.module
   })
 }
@@ -82,7 +84,7 @@ resource "azurerm_network_security_rule" "cml-std" {
   access                      = "Allow"
   protocol                    = "Tcp"
   source_port_range           = "*"
-  destination_port_ranges     = [22, 443, 1122, 9090]
+  destination_port_ranges     = [22, 80, 443, 1122, 9090]
   source_address_prefix       = "*"
   destination_address_prefix  = "*"
   resource_group_name         = data.azurerm_resource_group.cml.name
@@ -179,10 +181,10 @@ resource "azurerm_linux_virtual_machine" "cml" {
   #
   # https://learn.microsoft.com/en-us/azure/virtual-machines/ddv4-ddsv4-series
   # Size	vCPU	Memory: GiB	Temp storage (SSD) GiB	Max data disks	Max temp storage throughput: IOPS/MBps*	Max NICs	Expected network bandwidth (Mbps)
-  # Standard_D2d_v41	2	8	75	4	9000/125	2	5000
-  # Standard_D4d_v4	4	16	150	8	19000/250	2	10000
-  # Standard_D8d_v4	8	32	300	16	38000/500	4	12500
-  # Standard_D16d_v4	16	64	600	32	75000/1000	8	12500
+  # Standard_D2d_v41	2	8	75  	4	9000/125	2	5000
+  # Standard_D4d_v4     4	16	150 	8	19000/250	2	10000
+  # Standard_D8d_v4     8	32	300 	16	38000/500	4	12500
+  # Standard_D16d_v4	16	64	600 	32	75000/1000	8	12500
   # Standard_D32d_v4	32	128	1200	32	150000/2000	8	16000
   # Standard_D48d_v4	48	192	1800	32	225000/3000	8	24000
   # Standard_D64d_v4	64	256	2400	32	300000/4000	8	30000
