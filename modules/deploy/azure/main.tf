@@ -23,6 +23,8 @@ locals {
     extras   = var.options.extras
     path     = path.module
   })
+
+  # vmname     = "cml-${var.options.rand_id}"
 }
 
 # this references an existing resource group
@@ -72,7 +74,7 @@ data "azurerm_storage_account_sas" "cml" {
 }
 
 resource "azurerm_network_security_group" "cml" {
-  name                = "cml-sg-1"
+  name                = "cml-sg-${var.options.rand_id}"
   location            = data.azurerm_resource_group.cml.location
   resource_group_name = data.azurerm_resource_group.cml.name
 }
@@ -122,14 +124,14 @@ resource "azurerm_network_security_rule" "cml-patty-udp" {
 }
 
 resource "azurerm_public_ip" "cml" {
-  name                = "cml-pub-ip-1"
+  name                = "cml-pub-ip-${var.options.rand_id}"
   resource_group_name = data.azurerm_resource_group.cml.name
   location            = data.azurerm_resource_group.cml.location
   allocation_method   = "Dynamic"
 }
 
 resource "azurerm_virtual_network" "cml" {
-  name                = "cml-network"
+  name                = "cml-network-${var.options.rand_id}"
   address_space       = ["10.0.0.0/16"]
   location            = data.azurerm_resource_group.cml.location
   resource_group_name = data.azurerm_resource_group.cml.name
@@ -143,7 +145,7 @@ resource "azurerm_subnet" "cml" {
 }
 
 resource "azurerm_network_interface" "cml" {
-  name                = "cml-nic"
+  name                = "cml-nic-${var.options.rand_id}"
   location            = data.azurerm_resource_group.cml.location
   resource_group_name = data.azurerm_resource_group.cml.name
 

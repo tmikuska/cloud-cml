@@ -41,7 +41,7 @@ if False:
     template.remove()
     exit(0)
 
-rp = client.resource_pool_management.create_resource_pool("pods", licenses=5, ram=5120)
+rp = client.resource_pool_management.create_resource_pool("pods", licenses=2, ram=2048)
 
 for id in range(0, USER_COUNT + 1):
     client.user_management.create_user(f"pod{id}", f"{id:#02}DevWks{id:#02}", resource_pool=rp.id)
