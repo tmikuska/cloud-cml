@@ -1,6 +1,6 @@
 # README
 
-Version 2.9.0, July 17 2025
+Version 2.9.0, September 15 2025
 
 CML instances can run on Azure and AWS cloud infrastructure. This repository
 provides automation tooling using Terraform to deploy and manage CML in the
@@ -12,34 +12,53 @@ and prerequisites which are described in this README and in the
 _It is very likely that this tool chain can not be used "as-is"_. It should be
 forked and adapted to specific customer requirements and environments.
 
-> [!IMPORTANT]
->
-> **Version 2.7 vs 2.8**
->
-> CML2 version 2.8 has been released in November 2024. As CML 2.8 uses Ubuntu
-> 24.04 as the base operating system, cloud-cml needs to accommodate for that
-> during image selection when bringing up the VM on the hosting service (AWS,
-> Azure, ...). This means that going forward, cloud-cml supports 2.8 and not
-> 2.7 anymore. If CML versions earlier than CML 2.8 should be used then please
-> select the release with the tag `v2.7.2` that still supports CML 2.7!
->
-> **Support:**
->
-> - For customers with a valid service contract, CML cloud deployments are
->   supported by TAC within the outlined constraints. Beyond this, support is
->   done with best effort as cloud environments, requirements and policy can
->   differ to a great extent.
-> - With no service contract, support is done on a best effort basis via the
->   issue tracker.
->
-> **Features and capabilities:** Changes to the deployment tooling will be
-> considered like any other feature by adding them to the product roadmap. This
-> is done at the discretion of the CML team.
->
-> **Error reporting:** If you encounter any errors or problems that might be
-> related to the code in this repository then please open an issue on the
-> [Github issue tracker for this
-> repository](https://github.com/CiscoDevNet/cloud-cml/issues).
+## ⚠️ Important: Read this
+
+### Upgrading
+
+Upgrading a cloud instance is **not recommended** and/or **does not work**. A
+patch level upgrade _might_ work fine but a release level upgrade will likely
+fail. Especially when upgrading from version 2.7 or older to 2.8 or newer. In
+the best case, it will simply fail. In the worst case, you will loose your
+data.
+
+If you need to upgrade a cloud instance:
+
+- bring up a new instance
+- open up the required ports for migration to work
+- run the migration script to copy over data from your old instance to you
+  new instance
+- de-register and retire your old instance
+- apply the now freed-up license to your new instance
+
+Check the migration documentation on the [documentation site](https://developer.cisco.com/docs/modeling-labs/2-4/cml-release-notes/#installing-or-migrating-to-cml-24).
+
+### **Version 2.7 vs 2.8**
+
+CML2 version 2.8 has been released in November 2024. As CML 2.8 uses Ubuntu
+24.04 as the base operating system, cloud-cml needs to accommodate for that
+during image selection when bringing up the VM on the hosting service (AWS,
+Azure, ...). This means that going forward, cloud-cml supports 2.8 and not 2.7
+anymore. If CML versions earlier than CML 2.8 should be used then please select
+the release with the tag `v2.7.2` that still supports CML 2.7!
+
+**Support:**
+
+- For customers with a valid service contract, CML cloud deployments are
+supported by TAC within the outlined constraints. Beyond this, support is done
+with best effort as cloud environments, requirements and policy can differ to a
+great extent.
+- With no service contract, support is done on a best effort basis via the
+issue tracker.
+
+**Features and capabilities:** Changes to the deployment tooling will be
+considered like any other feature by adding them to the product roadmap. This
+is done at the discretion of the CML team.
+
+**Error reporting:** If you encounter any errors or problems that might be
+related to the code in this repository then please open an issue on the [Github
+issue tracker for this
+repository](https://github.com/CiscoDevNet/cloud-cml/issues).
 
 > [!IMPORTANT]
 > Read the section below about [cloud provider

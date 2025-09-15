@@ -5,6 +5,7 @@ Lists the changes for the tool releases.
 ## Unreleased
 
 - Document ssh key name requirement for `del.sh` (closes #36)
+- added comment about upgrading a cloud instance to the README
 
 ## Version 2.9.0
 
